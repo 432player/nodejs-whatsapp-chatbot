@@ -92,7 +92,7 @@ async function handleNewMessages(req, res){
     try {
         /** type {import('./whapi').Message[]} */
         const messages = req?.body?.messages;
-        if(messages.token != config.token){
+        if(req?.body?.token != config.token){
             res.send("Token is not Correct..");
             return
         }
