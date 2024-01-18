@@ -92,6 +92,11 @@ async function handleNewMessages(req, res){
     try {
         /** type {import('./whapi').Message[]} */
         const messages = req?.body?.messages;
+        if(messages.token != config.token){
+            res.send("Token is not Correct..");
+            return
+        }
+
         for (let message of messages) {
             if (message.from_me) continue;
             /** type {import('./whapi').Sender} */
@@ -103,7 +108,7 @@ async function handleNewMessages(req, res){
 
             switch (command) {
                 case 'TEXT': {
-                    sender.body = 'Medidate Bot Simple text message';
+                    sender.body = message.text?.text;
                     break;
                 }
                 case 'IMAGE': {
