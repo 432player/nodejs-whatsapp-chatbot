@@ -35,7 +35,7 @@ const FILES = {
  * @param method - GET, POST, PATCH, DELETE
  * @returns {Promise<object>}
  */
-async function sendWhapiRequest(endpoint, params= {}, method = 'POST') {
+async function sendWhapiRequest(endpoint, params = {}, method = 'POST') {
     let options = {
         method: method,
         headers: {
@@ -44,8 +44,8 @@ async function sendWhapiRequest(endpoint, params= {}, method = 'POST') {
     };
     if (!params.media) options.headers['Content-Type'] = 'application/json';
     let url = `${config.apiUrl}/${endpoint}`;
-    if(params && Object.keys(params).length > 0) {
-        if(method === 'GET')
+    if (params && Object.keys(params).length > 0) {
+        if (method === 'GET')
             url += '?' + new URLSearchParams(params);
         else
             options.body = params?.media ? toFormData(params) : JSON.stringify(params);
@@ -78,7 +78,7 @@ async function setHook() {
                     url: config.botUrl,
                     events: [
                         // default event for getting messages
-                        {type: "message", method: "post"}
+                        { type: "message", method: "post" }
                     ],
                     mode: "method"
                 }
@@ -88,11 +88,11 @@ async function setHook() {
     }
 }
 
-async function handleNewMessages(req, res){
+async function handleNewMessages(req, res) {
     try {
         /** type {import('./whapi').Message[]} */
         const messages = req?.body?.messages;
-        if(req?.body?.token != config.token){
+        if (req?.body?.token != config.token) {
             res.send("Token is not Correct..");
             return
         }
@@ -142,7 +142,7 @@ async function handleNewMessages(req, res){
                 }
                 case 'GROUP_CREATE': {
                     /* Warning : you can create group only with contacts from phone contact list */
-                    const res = await sendWhapiRequest(`groups`, {subject: 'Whapi.Cloud Test', participants: [message.chat_id.split('@')[0]]});
+                    const res = await sendWhapiRequest(`groups`, { subject: 'Whapi.Cloud Test', participants: [message.chat_id.split('@')[0]] });
                     sender.body = res.group_id ? `Group created. Group id: ${res.group_id}` : 'Error';
                     break;
                 }
@@ -153,7 +153,7 @@ async function handleNewMessages(req, res){
                     break;
                 }
                 case 'GROUPS_IDS': {
-                    const {groups} = await sendWhapiRequest('groups', {count: 3}, 'GET');
+                    const { groups } = await sendWhapiRequest('groups', { count: 3 }, 'GET');
                     sender.body = groups && groups.reduce((prevVal, currVal, i) => {
                         return i === 0 ? `${currVal.id} - ${currVal.name}` : prevVal + ',\n ' + `${currVal.id} - ${currVal.name}`;
                     }, '') || 'No groups';
@@ -177,6 +177,11 @@ const app = express();
 app.use(bodyParser.json());
 
 app.get('/', function (req, res) {
+    //Keep server alive hack
+    setInterval(function () {
+        console.log('keep server alive');
+    }, 3500000); //60 * 60 * 1000)//less then an hour
+
     res.send('Bot is running');
 });
 
