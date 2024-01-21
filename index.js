@@ -180,7 +180,7 @@ app.get('/', function (req, res) {
     //Keep server alive hack
     setInterval(function () {
         console.log('keep server alive');
-    }, 3500000); //60 * 60 * 1000)//less then an hour
+    }, 600000); //10 * 60 * 1000)//less then an hour
 
     res.send('Bot is running');
 });
