@@ -178,19 +178,88 @@ class SessionManager {
     /**
      * Get session status for a tenant
      * @param {string} tenantId - Tenant identifier
+     * @param {boolean} includeGatewayStatus - Whether to fetch fresh status from gateway
      * @returns {Object|null} Session status or null if not found
      */
-    getSessionStatus(tenantId) {
+    async getSessionStatus(tenantId, includeGatewayStatus = false) {
         const session = this.sessions.get(tenantId);
         if (!session) return null;
         
+        let gatewayStatus = null;
+        if (includeGatewayStatus) {
+            try {
+                gatewayStatus = await this.gatewayClient.getSessionStatus(session.sessionId);
+            } catch (error) {
+                console.error(`Error fetching gateway status for ${tenantId}:`, error);
+            }
+        }
+        
         return {
             sessionId: session.sessionId,
-            status: session.status,
+            status: gatewayStatus?.status || session.status,
             createdAt: session.createdAt,
             lastActivity: session.lastActivity,
-            webhookSet: session.webhookSet
+            webhookSet: session.webhookSet,
+            gatewayInfo: gatewayStatus
         };
+    }
+
+    /**
+     * Get QR code for a tenant's session
+     * @param {string} tenantId - Tenant identifier
+     * @returns {Promise<{qr: string, status: string, qrUrl?: string}>} QR code data
+     */
+    async getSessionQR(tenantId) {
+        try {
+            const session = this.sessions.get(tenantId);
+            if (!session) {
+                throw new Error(`No session found for tenant ${tenantId}`);
+            }
+
+            const qrData = await this.gatewayClient.getSessionQR(session.sessionId);
+            
+            // Update session status if provided
+            if (qrData.status) {
+                this.updateSessionStatus(tenantId, qrData.status);
+            }
+            
+            return {
+                ...qrData,
+                sessionId: session.sessionId,
+                tenantId: tenantId,
+                // Generate a data URL for the QR code if it's base64
+                qrUrl: qrData.qr ? `data:image/png;base64,${qrData.qr}` : null
+            };
+        } catch (error) {
+            console.error(`Error getting QR code for tenant ${tenantId}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Restart/re-link a session for a tenant
+     * @param {string} tenantId - Tenant identifier
+     * @returns {Promise<Object>} Restart result
+     */
+    async restartSession(tenantId) {
+        try {
+            const session = this.sessions.get(tenantId);
+            if (!session) {
+                throw new Error(`No session found for tenant ${tenantId}`);
+            }
+
+            console.log(`Restarting session for tenant ${tenantId}`);
+            
+            const result = await this.gatewayClient.restartSession(session.sessionId);
+            
+            // Update session status
+            this.updateSessionStatus(tenantId, 'restarting');
+            
+            return result;
+        } catch (error) {
+            console.error(`Error restarting session for tenant ${tenantId}:`, error);
+            throw error;
+        }
     }
 
     /**

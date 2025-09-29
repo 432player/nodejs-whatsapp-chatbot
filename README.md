@@ -96,16 +96,20 @@ The bot will start on the configured port (default: 3001) and automatically:
 
 ## 📱 Session Management
 
-### Creating a Session for a Tenant
+### Option 1: CRM-Integrated Session Creation (Recommended)
 
-**POST** `/admin/sessions`
+**POST** `/admin/sessions/create-with-qr`
 ```json
 {
-  "tenantId": "user123"
+  "tenantId": "user123",
+  "userInfo": {
+    "name": "John Doe",
+    "email": "john@example.com"
+  }
 }
 ```
 
-Response:
+Response includes QR code for immediate display:
 ```json
 {
   "success": true,
@@ -114,18 +118,48 @@ Response:
     "tenantId": "user123",
     "sessionId": "user123",
     "status": "created",
-    "createdAt": "2023-...",
-    "webhookSet": true
+    "qr": {
+      "qr": "base64-encoded-qr-image",
+      "qrUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+      "status": "qr_required"
+    },
+    "instructions": {
+      "step1": "Open WhatsApp on your phone",
+      "step2": "Go to Settings → Linked Devices",
+      "step3": "Tap \"Link a Device\"",
+      "step4": "Scan the QR code below",
+      "step5": "Wait for connection confirmation"
+    }
   }
 }
 ```
 
+### Option 2: Traditional Session Creation
+
+**POST** `/admin/sessions`
+```json
+{
+  "tenantId": "user123"
+}
+```
+
+Then get QR code separately:
+**GET** `/admin/sessions/user123/qr`
+
 ### Linking WhatsApp (QR Code Process)
 
-1. **Create a session** using the API above
+#### For CRM Integration (No Gateway UI needed):
+1. **Create session with QR** using `/admin/sessions/create-with-qr`
+2. **Display QR code** in your CRM interface using the returned `qrUrl`
+3. **Poll for status** using `/admin/sessions/user123/poll`
+4. **User scans QR** with WhatsApp (Settings → Linked Devices → Link a Device)
+5. **Session status** automatically updates to "connected"
+
+#### For Gateway Dashboard Access:
+1. **Create a session** using `/admin/sessions`
 2. **Access the Gateway Dashboard** at `http://localhost:3000` (or your gateway URL)
 3. **Find your session** in the dashboard
-4. **Scan the QR code** with WhatsApp (Settings → Linked Devices → Link a Device)
+4. **Scan the QR code** with WhatsApp
 5. **Session status** will automatically update to "connected"
 
 ### Checking Session Status
@@ -203,12 +237,22 @@ The gateway sends events like:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| POST | `/admin/sessions/create-with-qr` | **Create session + get QR (CRM-friendly)** |
 | POST | `/admin/sessions` | Create new session |
 | GET | `/admin/sessions/:tenantId` | Get session status |
+| GET | `/admin/sessions/:tenantId/qr` | **Get QR code for session** |
+| GET | `/admin/sessions/:tenantId/poll` | **Poll session status (with next action)** |
+| POST | `/admin/sessions/:tenantId/restart` | **Restart/reconnect session** |
 | DELETE | `/admin/sessions/:tenantId` | Delete session |
 | GET | `/admin/sessions` | List all sessions |
 | POST | `/admin/send-message` | Send message |
 | POST | `/admin/health-check` | Run health check |
+
+### 🎯 CRM Integration Endpoints
+
+The **bolded** endpoints above are specifically designed for seamless CRM integration, allowing your users to connect WhatsApp without accessing the gateway UI.
+
+📖 **For detailed CRM integration examples, see [CRM_INTEGRATION.md](./CRM_INTEGRATION.md)**
 
 ## 🏥 Health Monitoring
 

@@ -52,8 +52,12 @@ async function createTenantSession(req, res) {
 async function getTenantSessionStatus(req, res) {
     try {
         const { tenantId } = req.params;
+        const { includeGateway } = req.query;
         
-        const sessionStatus = webhookHandler.getSessionManager().getSessionStatus(tenantId);
+        const sessionStatus = await webhookHandler.getSessionManager().getSessionStatus(
+            tenantId, 
+            includeGateway === 'true'
+        );
         
         if (!sessionStatus) {
             return res.status(404).json({ error: 'Session not found' });
@@ -160,6 +164,171 @@ async function sendTenantMessage(req, res) {
 }
 
 /**
+ * Admin endpoint to get QR code for a tenant session
+ */
+async function getTenantQRCode(req, res) {
+    try {
+        const { tenantId } = req.params;
+        
+        const qrData = await webhookHandler.getSessionManager().getSessionQR(tenantId);
+        
+        res.json({
+            success: true,
+            message: 'QR code retrieved successfully',
+            data: qrData
+        });
+        
+    } catch (error) {
+        console.error('Error getting QR code:', error);
+        res.status(500).json({ 
+            error: 'Failed to get QR code', 
+            message: error.message 
+        });
+    }
+}
+
+/**
+ * Admin endpoint to restart/re-link a tenant session
+ */
+async function restartTenantSession(req, res) {
+    try {
+        const { tenantId } = req.params;
+        
+        const result = await webhookHandler.getSessionManager().restartSession(tenantId);
+        
+        res.json({
+            success: true,
+            message: 'Session restart initiated',
+            data: result
+        });
+        
+    } catch (error) {
+        console.error('Error restarting session:', error);
+        res.status(500).json({ 
+            error: 'Failed to restart session', 
+            message: error.message 
+        });
+    }
+}
+
+/**
+ * CRM-friendly endpoint to create session and get QR in one call
+ */
+async function createSessionWithQR(req, res) {
+    try {
+        const { tenantId, userInfo } = req.body;
+        
+        if (!tenantId) {
+            return res.status(400).json({ error: 'tenantId is required' });
+        }
+
+        console.log(`Creating session with QR for tenant: ${tenantId}`);
+        
+        // Create session
+        const sessionData = await webhookHandler.getSessionManager().getOrCreateSession(tenantId);
+        
+        // Wait a moment for session to initialize
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Get QR code
+        let qrData = null;
+        try {
+            qrData = await webhookHandler.getSessionManager().getSessionQR(tenantId);
+        } catch (qrError) {
+            console.log('QR not ready yet, session may need a moment to initialize');
+        }
+        
+        res.json({
+            success: true,
+            message: 'Session created successfully',
+            data: {
+                tenantId,
+                sessionId: sessionData.sessionId,
+                status: sessionData.status,
+                createdAt: sessionData.createdAt,
+                webhookSet: sessionData.webhookSet,
+                qr: qrData,
+                instructions: {
+                    step1: 'Open WhatsApp on your phone',
+                    step2: 'Go to Settings → Linked Devices',
+                    step3: 'Tap "Link a Device"',
+                    step4: 'Scan the QR code below',
+                    step5: 'Wait for connection confirmation'
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error creating session with QR:', error);
+        res.status(500).json({ 
+            error: 'Failed to create session', 
+            message: error.message 
+        });
+    }
+}
+
+/**
+ * Polling endpoint for session status (useful for CRM frontends)
+ */
+async function pollSessionStatus(req, res) {
+    try {
+        const { tenantId } = req.params;
+        
+        const sessionStatus = await webhookHandler.getSessionManager().getSessionStatus(tenantId, true);
+        
+        if (!sessionStatus) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+        
+        // Determine next action based on status
+        let nextAction = null;
+        let message = '';
+        
+        switch (sessionStatus.status) {
+            case 'created':
+            case 'qr_required':
+                nextAction = 'scan_qr';
+                message = 'Please scan the QR code with WhatsApp';
+                break;
+            case 'connecting':
+                nextAction = 'wait';
+                message = 'Connecting to WhatsApp...';
+                break;
+            case 'connected':
+            case 'ready':
+                nextAction = 'ready';
+                message = 'WhatsApp is connected and ready!';
+                break;
+            case 'disconnected':
+                nextAction = 'reconnect';
+                message = 'WhatsApp disconnected. Please reconnect.';
+                break;
+            default:
+                nextAction = 'wait';
+                message = `Status: ${sessionStatus.status}`;
+        }
+        
+        res.json({
+            success: true,
+            data: {
+                tenantId,
+                ...sessionStatus,
+                nextAction,
+                message,
+                timestamp: new Date().toISOString()
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error polling session status:', error);
+        res.status(500).json({ 
+            error: 'Failed to poll session status', 
+            message: error.message 
+        });
+    }
+}
+
+/**
  * Health check endpoint
  */
 async function healthCheck(req, res) {
@@ -202,7 +371,11 @@ app.post('/webhooks/whatsapp', (req, res) => {
 
 // Admin API endpoints
 app.post('/admin/sessions', createTenantSession);
+app.post('/admin/sessions/create-with-qr', createSessionWithQR);
 app.get('/admin/sessions/:tenantId', getTenantSessionStatus);
+app.get('/admin/sessions/:tenantId/qr', getTenantQRCode);
+app.post('/admin/sessions/:tenantId/restart', restartTenantSession);
+app.get('/admin/sessions/:tenantId/poll', pollSessionStatus);
 app.delete('/admin/sessions/:tenantId', deleteTenantSession);
 app.get('/admin/sessions', listAllSessions);
 app.post('/admin/send-message', sendTenantMessage);

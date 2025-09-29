@@ -290,6 +290,87 @@ class SuperLightGatewayClient {
     }
 
     /**
+     * Get QR code for a session
+     * @param {string} sessionId - Session identifier
+     * @returns {Promise<{qr: string, status: string}>} QR code data
+     */
+    async getSessionQR(sessionId) {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/v1/sessions/${sessionId}/qr`, {
+                method: 'GET',
+                headers: {
+                    'X-Master-Key': this.masterKey
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to get QR code: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log('QR code retrieved for session:', sessionId);
+            return data;
+        } catch (error) {
+            console.error('Error getting QR code:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get session status and info
+     * @param {string} sessionId - Session identifier
+     * @returns {Promise<Object>} Session status information
+     */
+    async getSessionStatus(sessionId) {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/v1/sessions/${sessionId}`, {
+                method: 'GET',
+                headers: {
+                    'X-Master-Key': this.masterKey
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to get session status: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log('Session status retrieved:', JSON.stringify(data, null, 2));
+            return data;
+        } catch (error) {
+            console.error('Error getting session status:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Restart a session (useful for re-linking)
+     * @param {string} sessionId - Session identifier
+     * @returns {Promise<Object>} Restart result
+     */
+    async restartSession(sessionId) {
+        try {
+            const response = await fetch(`${this.baseUrl}/api/v1/sessions/${sessionId}/restart`, {
+                method: 'POST',
+                headers: {
+                    'X-Master-Key': this.masterKey
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to restart session: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log('Session restarted:', JSON.stringify(data, null, 2));
+            return data;
+        } catch (error) {
+            console.error('Error restarting session:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Delete a session
      * @param {string} sessionId - Session identifier
      */
