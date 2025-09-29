@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp CRM Integration Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .whatsapp-widget {
+            border: 2px solid #25d366;
+            border-radius: 12px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        }
+        
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .widget-header h3 {
+            margin: 0;
+            color: #1f2937;
+        }
+        
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-badge.not-connected {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .status-badge.connecting {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        
+        .status-badge.connected {
+            background: #d1fae5;
+            color: #059669;
+        }
+        
+        .setup-area, .qr-area, .connected-area {
+            text-align: center;
+        }
+        
+        .qr-area {
+            display: none;
+            padding: 20px;
+        }
+        
+        .qr-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: inline-block;
+        }
+        
+        .qr-container img {
+            max-width: 256px;
+            border-radius: 8px;
+        }
+        
+        .instructions {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            text-align: left;
+        }
+        
+        .instructions ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin: 8px 0;
+            color: #4b5563;
+        }
+        
+        .progress-indicator {
+            margin: 16px 0;
+            padding: 12px;
+            background: #eff6ff;
+            border-radius: 8px;
+            color: #1e40af;
+            font-weight: 500;
+        }
+        
+        .connected-area {
+            display: none;
+            padding: 20px;
+        }
+        
+        .success-message {
+            color: #059669;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 8px;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .btn-connect {
+            background: #25d366;
+            color: white;
+        }
+        
+        .btn-test {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-disconnect {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .message-area {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .message-area input, .message-area textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        
+        .log-area {
+            margin-top: 20px;
+            padding: 16px;
+            background: #1f2937;
+            color: #f9fafb;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 WhatsApp CRM Integration Demo</h1>
+        <p>This demo shows how to integrate WhatsApp session management directly into your CRM without requiring users to access the gateway UI.</p>
+        
+        <div class="whatsapp-widget">
+            <div class="widget-header">
+                <h3>📱 WhatsApp Integration</h3>
+                <span id="whatsapp-status" class="status-badge not-connected">Not Connected</span>
+            </div>
+            
+            <div id="setup-area" class="setup-area">
+                <p>Connect your WhatsApp to start sending messages through your CRM.</p>
+                <input type="text" id="tenant-id" placeholder="Enter your user ID (e.g., user123)" value="demo-user-123">
+                <br><br>
+                <button onclick="connectWhatsApp()" class="btn btn-connect">
+                    🔗 Connect WhatsApp
+                </button>
+            </div>
+            
+            <div id="qr-area" class="qr-area">
+                <h4>📲 Scan QR Code with WhatsApp</h4>
+                <div class="qr-container">
+                    <img id="qr-image" alt="QR Code" />
+                </div>
+                <div class="instructions">
+                    <h5>Instructions:</h5>
+                    <ol>
+                        <li>Open WhatsApp on your phone</li>
+                        <li>Go to <strong>Settings → Linked Devices</strong></li>
+                        <li>Tap <strong>"Link a Device"</strong></li>
+                        <li>Scan the QR code above</li>
+                        <li>Wait for connection confirmation</li>
+                    </ol>
+                </div>
+                <div id="connection-progress" class="progress-indicator">
+                    ⏳ Waiting for QR scan...
+                </div>
+            </div>
+            
+            <div id="connected-area" class="connected-area">
+                <div class="success-message">✅ WhatsApp Connected Successfully!</div>
+                <p>You can now send WhatsApp messages through your CRM.</p>
+                
+                <div class="message-area">
+                    <h5>📤 Send Test Message</h5>
+                    <input type="text" id="phone-number" placeholder="Phone number (e.g., 1234567890)" value="">
+                    <textarea id="message-text" placeholder="Enter your message..." rows="3">Hello! This is a test message from the CRM integration demo.</textarea>
+                    <br>
+                    <button onclick="sendTestMessage()" class="btn btn-test">
+                        📨 Send Message
+                    </button>
+                </div>
+                
+                <br>
+                <button onclick="disconnectWhatsApp()" class="btn btn-disconnect">
+                    🔌 Disconnect WhatsApp
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h3>📊 Activity Log</h3>
+        <div id="log-area" class="log-area">
+            <div>Ready to connect WhatsApp...</div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - Update these for your setup
+        const API_BASE_URL = 'http://localhost:3001'; // Your bot's URL
+        let currentTenantId = null;
+        let pollingInterval = null;
+        
+        // Logging function
+        function log(message) {
+            const logArea = document.getElementById('log-area');
+            const timestamp = new Date().toLocaleTimeString();
+            logArea.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+        
+        // Update UI status
+        function updateStatus(status, message) {
+            const statusBadge = document.getElementById('whatsapp-status');
+            statusBadge.textContent = message || status;
+            statusBadge.className = `status-badge ${status}`;
+        }
+        
+        // Show/hide UI sections
+        function showSection(sectionId) {
+            document.getElementById('setup-area').classList.add('hidden');
+            document.getElementById('qr-area').classList.add('hidden');
+            document.getElementById('connected-area').classList.add('hidden');
+            document.getElementById(sectionId).classList.remove('hidden');
+        }
+        
+        // Connect WhatsApp
+        async function connectWhatsApp() {
+            const tenantIdInput = document.getElementById('tenant-id');
+            currentTenantId = tenantIdInput.value.trim();
+            
+            if (!currentTenantId) {
+                alert('Please enter a user ID');
+                return;
+            }
+            
+            log(`Starting WhatsApp connection for user: ${currentTenantId}`);
+            updateStatus('connecting', 'Creating Session...');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/sessions/create-with-qr`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        tenantId: currentTenantId,
+                        userInfo: {
+                            name: 'Demo User',
+                            email: 'demo@example.com'
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    log('Session created successfully');
+                    
+                    if (data.data.qr && data.data.qr.qrUrl) {
+                        document.getElementById('qr-image').src = data.data.qr.qrUrl;
+                        showSection('qr-area');
+                        updateStatus('connecting', 'Scan QR Code');
+                        startStatusPolling();
+                    } else {
+                        log('QR code not available yet, polling for status...');
+                        startStatusPolling();
+                    }
+                } else {
+                    throw new Error(data.message || 'Failed to create session');
+                }
+            } catch (error) {
+                log(`Error: ${error.message}`);
+                updateStatus('not-connected', 'Connection Failed');
+                showSection('setup-area');
+            }
+        }
+        
+        // Start polling for connection status
+        function startStatusPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+            
+            log('Starting status polling...');
+            
+            pollingInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/admin/sessions/${currentTenantId}/poll`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const { status, nextAction, message } = data.data;
+                        
+                        log(`Status: ${status} | Next: ${nextAction} | ${message}`);
+                        
+                        switch (nextAction) {
+                            case 'scan_qr':
+                                updateStatus('connecting', 'Scan QR Code');
+                                document.getElementById('connection-progress').textContent = '📱 Please scan the QR code with WhatsApp';
+                                break;
+                                
+                            case 'wait':
+                                updateStatus('connecting', 'Connecting...');
+                                document.getElementById('connection-progress').textContent = '⏳ Connecting to WhatsApp...';
+                                break;
+                                
+                            case 'ready':
+                                clearInterval(pollingInterval);
+                                updateStatus('connected', 'Connected');
+                                showSection('connected-area');
+                                log('✅ WhatsApp connected successfully!');
+                                break;
+                                
+                            case 'reconnect':
+                                clearInterval(pollingInterval);
+                                updateStatus('not-connected', 'Disconnected');
+                                showSection('setup-area');
+                                log('❌ WhatsApp disconnected. Please reconnect.');
+                                break;
+                        }
+                    }
+                } catch (error) {
+                    log(`Polling error: ${error.message}`);
+                }
+            }, 3000); // Poll every 3 seconds
+        }
+        
+        // Send test message
+        async function sendTestMessage() {
+            const phoneNumber = document.getElementById('phone-number').value.trim();
+            const messageText = document.getElementById('message-text').value.trim();
+            
+            if (!phoneNumber || !messageText) {
+                alert('Please enter both phone number and message');
+                return;
+            }
+            
+            log(`Sending message to ${phoneNumber}...`);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/send-message`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        tenantId: currentTenantId,
+                        to: phoneNumber,
+                        message: messageText,
+                        type: 'text'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    log('✅ Message sent successfully!');
+                    document.getElementById('message-text').value = '';
+                } else {
+                    throw new Error(data.message || 'Failed to send message');
+                }
+            } catch (error) {
+                log(`❌ Error sending message: ${error.message}`);
+            }
+        }
+        
+        // Disconnect WhatsApp
+        async function disconnectWhatsApp() {
+            if (!confirm('Are you sure you want to disconnect WhatsApp?')) {
+                return;
+            }
+            
+            log(`Disconnecting WhatsApp for user: ${currentTenantId}`);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/sessions/${currentTenantId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    log('✅ WhatsApp disconnected successfully');
+                    updateStatus('not-connected', 'Not Connected');
+                    showSection('setup-area');
+                    
+                    if (pollingInterval) {
+                        clearInterval(pollingInterval);
+                        pollingInterval = null;
+                    }
+                    
+                    currentTenantId = null;
+                } else {
+                    throw new Error(data.message || 'Failed to disconnect');
+                }
+            } catch (error) {
+                log(`❌ Error disconnecting: ${error.message}`);
+            }
+        }
+        
+        // Initialize
+        log('CRM Integration Demo loaded. Ready to connect WhatsApp.');
+    </script>
+</body>
+</html>
