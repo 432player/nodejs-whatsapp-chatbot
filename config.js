@@ -1,13 +1,26 @@
 module.exports = {
     port: process.env.PORT,
-    // API endpoint URL
-    apiUrl: "https://gate.whapi.cloud",
-    // API token from your channel
-    token: process.env.TOKEN,
-// The ID of the group to which we will send the message. Use to find out the ID: https://whapi.readme.io/reference/getgroups
-    group: process.env.GROUP,
-// The ID of the product we will send for the example. Create a product in your WhatsApp and find out the product ID: https://whapi.readme.io/reference/getproducts
-    product: process.env.PRODUCT,
-    // Bot`s URL (for static file). Webhook Link to your server. At ( {server link}/messages ), when POST is requested, processing occurs
-    botUrl: process.env.baseURL + "/messages"
+    
+    // Super Light WhatsApp API Server (Baileys) Configuration
+    gateway: {
+        baseUrl: process.env.GATEWAY_BASE_URL || "http://localhost:3000",
+        masterKey: process.env.GATEWAY_MASTER_KEY,
+        webhookUrl: process.env.PUBLIC_WEBHOOK_URL + "/webhooks/whatsapp"
+    },
+    
+    // Legacy configuration (kept for reference during migration)
+    // Remove these after migration is complete
+    legacy: {
+        apiUrl: "https://gate.whapi.cloud",
+        token: process.env.TOKEN,
+        group: process.env.GROUP,
+        product: process.env.PRODUCT,
+        botUrl: process.env.baseURL + "/messages"
+    },
+    
+    // Bot configuration
+    bot: {
+        webhookUrl: process.env.PUBLIC_WEBHOOK_URL + "/webhooks/whatsapp",
+        baseUrl: process.env.baseURL || process.env.PUBLIC_WEBHOOK_URL
+    }
 }
